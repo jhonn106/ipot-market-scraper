@@ -7,7 +7,7 @@ def scrape_indeks_kurs():
         page = browser.new_page()
         page.goto("https://indopremier.com/#ipot/app/marketlive", timeout=60000)
 
-        # --- 1. Tutup modal / backdrop kalau ada ---
+        # Tutup modal kalau ada
         for _ in range(3):
             if page.locator(".modal-in, .popover-info, .popup-backdrop").count():
                 page.keyboard.press("Escape")
@@ -15,27 +15,23 @@ def scrape_indeks_kurs():
             else:
                 break
 
-        # --- 2. Klik tab "Indeks & Kurs" ---
+        # Klik tab "Indeks & Kurs"
         idx_tab = page.get_by_text("Indeks & Kurs")
         idx_tab.wait_for(state="visible", timeout=10000)
-        idx_tab.click(force=True)               # force=true lewati cek overlap
+        idx_tab.click(force=True)
 
-        # --- 3. Tunggu tabel muncul lalu ambil text ---
-        page.wait_for_timeout(3000)             # tunggu render
+        # Tunggu render data
+        page.wait_for_timeout(4000)
+
+        # Ambil semua baris di dalam ion-grid
         rows = page.locator("ion-grid ion-row").all_inner_texts()
-
         result = "📊 *Indeks & Kurs:*\n"
         for r in rows:
             clean = re.sub(r"\s+", " ", r).strip()
             if clean and re.search(r"\d", clean):
                 result += f"• {clean}\n"
-                if len(result) > 1500:
-                    break
-
         browser.close()
         return result.strip()
-print("DEBUG raw data:")
-print(repr(data))          # tampilkan semua karakter termasuk \n
 
 def send_to_telegram(message):
     token = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -46,9 +42,9 @@ def send_to_telegram(message):
     print("✅ Terkirim" if r.ok else f"❌ Gagal: {r.text}")
 
 if __name__ == "__main__":
-    data = scrape_indeks_kurs()     # <-- definisikan dulu
+    data = scrape_indeks_kurs()
     print("DEBUG raw data:")
-    print(repr(data))               # <-- baru print
+    print(repr(data))
     if data and "Indeks" in data:
         send_to_telegram(data)
     else:
