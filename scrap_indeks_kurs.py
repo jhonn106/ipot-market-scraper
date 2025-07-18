@@ -7,21 +7,22 @@ def scrape_indeks_kurs():
         page = browser.new_page()
         page.goto("https://indopremier.com/#ipot/app/marketlive", timeout=60000)
 
-        # Tunggu sampai minimal satu baris indeks muncul
-        page.wait_for_selector('xpath=//div[contains(@class,"index-item") or @data-testid="index-row"]', timeout=30000)
+        # 1. Tunggu sampai menu “Indeks & Kurs” bisa diklik
+        idx_tab = page.get_by_text("Indeks & Kurs")
+        idx_tab.wait_for(state="visible", timeout=30000)
+        idx_tab.click()
 
-        # Scroll ke bagian indeks agar semua data ter-render
-        page.evaluate("window.scrollTo(0, 400)")
-
-        # Ambil text dari setiap baris indeks
-        rows = page.locator('xpath=//div[contains(@class,"index-item") or @data-testid="index-row"]').all_inner_texts()
+        # 2. Tunggu tabel indeks tampil (ambil semua baris teks)
+        page.wait_for_timeout(3000)  # jeda loading
+        rows = page.locator("css=ion-grid >> ion-row").all_inner_texts()
 
         result = "📊 *Indeks & Kurs:*\n"
         for r in rows:
-            # Bersihkan baris yang kosong atau hanya simbol
             r = re.sub(r"\s+", " ", r).strip()
-            if r and not re.match(r"^[\W_]+$", r):
+            if r and re.search(r"\d", r):   # pastikan ada angka
                 result += f"• {r}\n"
+                if len(result) > 1500:      # batasi panjang
+                    break
 
         browser.close()
         return result.strip()
@@ -36,7 +37,7 @@ def send_to_telegram(message):
 
 if __name__ == "__main__":
     data = scrape_indeks_kurs()
-    if "Indeks" in data and len(data) > 50:   # cegah pesan kosong
+    if data.count("•") >= 2:        # minimal 2 baris data
         send_to_telegram(data)
     else:
         print("⚠️ Tidak ada data indeks yang valid")
