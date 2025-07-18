@@ -1,5 +1,5 @@
 from playwright.sync_api import sync_playwright
-import os, requests, re, base64
+import os, requests, re
 
 def scrape_indeks_kurs():
     with sync_playwright() as p:
@@ -7,7 +7,7 @@ def scrape_indeks_kurs():
         page = browser.new_page()
         page.goto("https://indopremier.com/#ipot/app/marketlive", timeout=60000)
 
-        # Tutup backdrop/modal kalau ada
+        # Tutup modal kalau ada
         for _ in range(3):
             if page.locator(".modal-in, .popover-info, .popup-backdrop").count():
                 page.keyboard.press("Escape")
@@ -21,20 +21,26 @@ def scrape_indeks_kurs():
         idx_tab.click(force=True)
         page.wait_for_timeout(4000)
 
-        # Ambil SEMUA teks dalam card/area "Indeks & Kurs"
-        card = page.locator("ion-card, .index-card, ion-grid").first
-        txt  = card.inner_text(timeout=10000)
+        # Ambil seluruh teks halaman
+        full_text = page.locator("body").inner_text(timeout=15000)
 
-        # Bersihkan & ekstrak baris yang punya angka
-        lines = [ln.strip() for ln in txt.splitlines() if ln.strip()]
+        # Ekstrak bagian mulai dari "Indeks & Kurs"
+        start = full_text.find("Indeks & Kurs")
+        if start == -1:
+            return "❌ Label 'Indeks & Kurs' tidak ditemukan."
+
+        # Ambil ~30 baris setelah label
+        slice_text = full_text[start:start+2500]
+        lines = [ln.strip() for ln in slice_text.splitlines() if ln.strip()]
+
         result = "📊 *Indeks & Kurs:*\n"
-        for ln in lines:
+        for ln in lines[1:]:                # skip judul
             if re.search(r"\d", ln):
                 result += f"• {ln}\n"
                 if len(result) > 1500:
                     break
 
-        # Screenshot untuk debug (akan tersedia di artefak GitHub)
+        # Screenshot debug
         os.makedirs("debug", exist_ok=True)
         page.screenshot(path="debug/page.png", full_page=True)
 
@@ -53,7 +59,7 @@ if __name__ == "__main__":
     data = scrape_indeks_kurs()
     print("DEBUG raw data:")
     print(repr(data))
-    if data.count("•") >= 2:
+    if data.count("•") >= 1:
         send_to_telegram(data)
     else:
-        send_to_telegram("⚠️ Scraping selesai, tapi tidak ada data indeks yang terdeteksi.")
+        send_to_telegram("⚠️ Scraping selesai, tapi tidak ada baris data yang memuat angka.")
