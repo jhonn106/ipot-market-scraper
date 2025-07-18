@@ -34,6 +34,8 @@ def scrape_indeks_kurs():
 
         browser.close()
         return result.strip()
+print("DEBUG raw data:")
+print(repr(data))          # tampilkan semua karakter termasuk \n
 
 def send_to_telegram(message):
     token = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -45,7 +47,12 @@ def send_to_telegram(message):
 
 if __name__ == "__main__":
     data = scrape_indeks_kurs()
-    if data.count("•") >= 2:
+    print("DEBUG raw data:")
+    print(repr(data))
+
+    # Kirim selama tidak kosong
+    if data and "Indeks" in data:
         send_to_telegram(data)
     else:
-        print("⚠️ Tidak ada data indeks yang valid")
+        # Tetap kirim pesan error supaya kamu tahu
+        send_to_telegram("⚠️ Scraping selesai, tapi tidak ada data indeks yang terdeteksi.")
