@@ -52,7 +52,7 @@ def send_to_telegram(message):
         print("❌ Token atau Chat ID kosong!")
         return
 
-    url = f"https://api.telegram.org/bot7249080183:AAEkMHdJ-fL0mI_LRqXT6UtJ2-DS5QI4j8M/sendMessage"  /sendMessage"
+    url = f"https://api.telegram.org/bot7249080183:AAEkMHdJ-fL0mI_LRqXT6UtJ2-DS5QI4j8M/sendMessage"
     payload = {
         "chat_id": chat_id,
         "text": message,
