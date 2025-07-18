@@ -31,7 +31,7 @@ async def scrape():
             if match:
                 time, kode, harga, lot = match.groups()
                 lot = float(lot.replace('.', '').replace(',', ''))
-                if lot > 1000:
+                if lot > 1:
                     hasil.append(f"{time} | <b>{kode}</b> | Rp{harga} | Lot: {int(lot)}")
         await browser.close()
 
