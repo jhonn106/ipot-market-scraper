@@ -7,21 +7,29 @@ def scrape_indeks_kurs():
         page = browser.new_page()
         page.goto("https://indopremier.com/#ipot/app/marketlive", timeout=60000)
 
-        # 1. Tunggu sampai menu “Indeks & Kurs” bisa diklik
-        idx_tab = page.get_by_text("Indeks & Kurs")
-        idx_tab.wait_for(state="visible", timeout=30000)
-        idx_tab.click()
+        # --- 1. Tutup modal / backdrop kalau ada ---
+        for _ in range(3):
+            if page.locator(".modal-in, .popover-info, .popup-backdrop").count():
+                page.keyboard.press("Escape")
+                page.wait_for_timeout(500)
+            else:
+                break
 
-        # 2. Tunggu tabel indeks tampil (ambil semua baris teks)
-        page.wait_for_timeout(3000)  # jeda loading
-        rows = page.locator("css=ion-grid >> ion-row").all_inner_texts()
+        # --- 2. Klik tab "Indeks & Kurs" ---
+        idx_tab = page.get_by_text("Indeks & Kurs")
+        idx_tab.wait_for(state="visible", timeout=10000)
+        idx_tab.click(force=True)               # force=true lewati cek overlap
+
+        # --- 3. Tunggu tabel muncul lalu ambil text ---
+        page.wait_for_timeout(3000)             # tunggu render
+        rows = page.locator("ion-grid ion-row").all_inner_texts()
 
         result = "📊 *Indeks & Kurs:*\n"
         for r in rows:
-            r = re.sub(r"\s+", " ", r).strip()
-            if r and re.search(r"\d", r):   # pastikan ada angka
-                result += f"• {r}\n"
-                if len(result) > 1500:      # batasi panjang
+            clean = re.sub(r"\s+", " ", r).strip()
+            if clean and re.search(r"\d", clean):
+                result += f"• {clean}\n"
+                if len(result) > 1500:
                     break
 
         browser.close()
@@ -37,7 +45,7 @@ def send_to_telegram(message):
 
 if __name__ == "__main__":
     data = scrape_indeks_kurs()
-    if data.count("•") >= 2:        # minimal 2 baris data
+    if data.count("•") >= 2:
         send_to_telegram(data)
     else:
         print("⚠️ Tidak ada data indeks yang valid")
