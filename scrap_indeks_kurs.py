@@ -13,13 +13,16 @@ def send_to_telegram(message):
 
 def scrape_indeks_kurs():
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch()
         page = browser.new_page()
-        page.goto("https://www.indopremier.com/#ipot/app/marketlive", wait_until="load")
-        time.sleep(7)  # tunggu data indeks dan kurs muncul
+        page.goto("https://www.indopremier.com/#ipot/app/marketlive")
+        time.sleep(10)  # Tambahkan delay agar halaman selesai loading
 
-        indeks = page.locator("text=IHSG").nth(0).locator("xpath=..").inner_text()
-        kurs = page.locator("text=USD/IDR").nth(0).locator("xpath=..").inner_text()
+        # Tunggu elemen indeks muncul
+        indeks = page.locator("div:has-text('IDX COMPOSITE')").first.inner_text()
+
+        # Tunggu elemen kurs muncul
+        kurs = page.locator("div:has-text('USD/IDR')").first.inner_text()
 
         browser.close()
         return indeks, kurs
