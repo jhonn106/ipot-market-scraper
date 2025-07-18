@@ -1,48 +1,42 @@
+# scrap_indeks_kurs.py
 import asyncio
-from playwright.async_api import async_playwright
-import requests
 import os
-import re
+import requests
+from playwright.async_api import async_playwright
 
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
-def kirim_telegram(pesan):
-    url = f"https://api.telegram.org/bot7249080183:AAEkMHdJ-fL0mI_LRqXT6UtJ2-DS5QI4j8M/sendMessage"
-    data = {
-        "chat_id": 178798282,
-        "text": pesan,
-        "parse_mode": "HTML"
+async def send_to_telegram(message):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": message,
+        "parse_mode": "Markdown"
     }
-    requests.post(url, data=data)
-
-async def scrape():
-    hasil = []
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
-        await page.goto("https://www.indopremier.com/#ipot/app/marketlive", wait_until="networkidle")
-        await page.wait_for_timeout(10000)
-
-        rows = await page.locator("css=table >> tbody >> tr").all()
-        for row in rows:
-            text = await row.inner_text()
-            match = re.search(r"(\d{2}:\d{2}:\d{2})\s+(\w+)\s+([\d\.]+)\s+[-\d\.]+\s+[-\d\.%]+\s+([\d\.]+)", text)
-            if match:
-                time, kode, harga, lot = match.groups()
-                lot = float(lot.replace('.', '').replace(',', ''))
-                if lot > 1:
-                    hasil.append(f"{time} | <b>{kode}</b> | Rp{harga} | Lot: {int(lot)}")
-        await browser.close()
-
-    if hasil:
-        return "📊 <b>Running Trade > 1000 Lot</b>\n" + "\n".join(hasil)
-    else:
-        return "❌ Tidak ada transaksi dengan volume > 1000 saat ini."
+    requests.post(url, data=payload)
 
 async def main():
-    pesan = await scrape()
-    kirim_telegram(pesan)
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
 
-if __name__ == "__main__":
-    asyncio.run(main())
+        await page.goto("https://www.indopremier.com/#ipot/app/marketlive", timeout=60000)
+        await page.wait_for_timeout(6000)  # delay render
+        
+        content = await page.content()
+        
+        # Ambil semua elemen yang terlihat di tab Indeks & Kurs
+        # Catatan: kamu bisa adjust selector ini sesuai hasil inspect
+        data = await page.locator("div.MuiBox-root").all_inner_texts()
+        
+        # Filter data yang berkaitan dengan indeks/kurs
+        result = "\n".join([line for line in data if "USD" in line or "Index" in line or "%" in line])
+
+        message = f"*📈 Indeks & Kurs IPOT Live:*\n\n```\n{result}\n```"
+        print(message)
+        await send_to_telegram(message)
+        await browser.close()
+
+asyncio.run(main())
