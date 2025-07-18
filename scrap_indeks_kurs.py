@@ -29,7 +29,7 @@ def scrape_indeks_kurs():
 def send_to_telegram(message):
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    url = f"https://api.telegram.org/bot7249080183:AAEkMHdJ-fL0mI_LRqXT6UtJ2-DS5QI4j8M/sendMessage"
     payload = {"chat_id": chat_id, "text": message, "parse_mode": "Markdown"}
     r = requests.post(url, json=payload, timeout=10)
     print("✅ Terkirim" if r.ok else f"❌ Gagal: {r.text}")
