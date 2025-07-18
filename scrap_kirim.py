@@ -4,8 +4,8 @@ import requests
 import os
 import re
 
-TOKEN = os.getenv("7249080183:AAEkMHdJ-fL0mI_LRqXT6UtJ2-DS5QI4j8M")
-CHAT_ID = os.getenv("178798282")
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 def kirim_telegram(pesan):
     url = f"https://api.telegram.org/bot7249080183:AAEkMHdJ-fL0mI_LRqXT6UtJ2-DS5QI4j8M/sendMessage"
