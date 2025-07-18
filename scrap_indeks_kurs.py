@@ -1,5 +1,5 @@
 from playwright.sync_api import sync_playwright
-import os, requests, re
+import os, requests, re, base64
 
 def scrape_indeks_kurs():
     with sync_playwright() as p:
@@ -7,7 +7,7 @@ def scrape_indeks_kurs():
         page = browser.new_page()
         page.goto("https://indopremier.com/#ipot/app/marketlive", timeout=60000)
 
-        # Tutup modal kalau ada
+        # Tutup backdrop/modal kalau ada
         for _ in range(3):
             if page.locator(".modal-in, .popover-info, .popup-backdrop").count():
                 page.keyboard.press("Escape")
@@ -19,17 +19,25 @@ def scrape_indeks_kurs():
         idx_tab = page.get_by_text("Indeks & Kurs")
         idx_tab.wait_for(state="visible", timeout=10000)
         idx_tab.click(force=True)
-
-        # Tunggu render data
         page.wait_for_timeout(4000)
 
-        # Ambil semua baris di dalam ion-grid
-        rows = page.locator("ion-grid ion-row").all_inner_texts()
+        # Ambil SEMUA teks dalam card/area "Indeks & Kurs"
+        card = page.locator("ion-card, .index-card, ion-grid").first
+        txt  = card.inner_text(timeout=10000)
+
+        # Bersihkan & ekstrak baris yang punya angka
+        lines = [ln.strip() for ln in txt.splitlines() if ln.strip()]
         result = "📊 *Indeks & Kurs:*\n"
-        for r in rows:
-            clean = re.sub(r"\s+", " ", r).strip()
-            if clean and re.search(r"\d", clean):
-                result += f"• {clean}\n"
+        for ln in lines:
+            if re.search(r"\d", ln):
+                result += f"• {ln}\n"
+                if len(result) > 1500:
+                    break
+
+        # Screenshot untuk debug (akan tersedia di artefak GitHub)
+        os.makedirs("debug", exist_ok=True)
+        page.screenshot(path="debug/page.png", full_page=True)
+
         browser.close()
         return result.strip()
 
@@ -45,7 +53,7 @@ if __name__ == "__main__":
     data = scrape_indeks_kurs()
     print("DEBUG raw data:")
     print(repr(data))
-    if data and "Indeks" in data:
+    if data.count("•") >= 2:
         send_to_telegram(data)
     else:
         send_to_telegram("⚠️ Scraping selesai, tapi tidak ada data indeks yang terdeteksi.")
