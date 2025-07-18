@@ -1,6 +1,5 @@
 name: Scrape Indeks & Kurs
 
-
 # Trigger real-time
 on:
   workflow_dispatch:     # Bisa dijalankan manual dari tab Actions
@@ -15,12 +14,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - name: Install deps
         run: |
           pip install -r requirements.txt
           playwright install chromium --with-deps
-  - name: Run scraper
-      env:
-        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      run: python scrap_indeks_kurs.py
+
+      - name: Run scraper
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python scrap_indeks_kurs.py
