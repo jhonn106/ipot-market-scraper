@@ -10,7 +10,7 @@ CHAT_ID = os.getenv("178798282")
 def kirim_telegram(pesan):
     url = f"https://api.telegram.org/bot7249080183:AAEkMHdJ-fL0mI_LRqXT6UtJ2-DS5QI4j8M/sendMessage"
     data = {
-        "chat_id": CHAT_ID,
+        "chat_id": 178798282,
         "text": pesan,
         "parse_mode": "HTML"
     }
