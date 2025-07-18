@@ -62,5 +62,9 @@ def send_to_telegram(message):
 
 if __name__ == "__main__":
     data = scrape_indeks_kurs()
-    print(data)
+    print("🔍 Hasil Scraping:")
+print(data)
+if "Indeks" in data:
     send_to_telegram(data)
+else:
+    print("⚠️ Tidak ada data yang valid untuk dikirim ke Telegram.")
