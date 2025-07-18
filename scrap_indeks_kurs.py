@@ -46,13 +46,10 @@ def send_to_telegram(message):
     print("✅ Terkirim" if r.ok else f"❌ Gagal: {r.text}")
 
 if __name__ == "__main__":
-    data = scrape_indeks_kurs()
+    data = scrape_indeks_kurs()     # <-- definisikan dulu
     print("DEBUG raw data:")
-    print(repr(data))
-
-    # Kirim selama tidak kosong
+    print(repr(data))               # <-- baru print
     if data and "Indeks" in data:
         send_to_telegram(data)
     else:
-        # Tetap kirim pesan error supaya kamu tahu
         send_to_telegram("⚠️ Scraping selesai, tapi tidak ada data indeks yang terdeteksi.")
