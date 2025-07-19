@@ -23,6 +23,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           playwright install chromium
+      - name: Install Chrome & ChromeDriver
+        uses: browser-actions/setup-chrome@latest
+        with:
+          chrome-version: stable
+      - uses: nanasess/setup-chromedriver@v2
 
       - name: Jalankan Scraper Stockbit Trending
         env:
