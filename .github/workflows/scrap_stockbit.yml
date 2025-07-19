@@ -1,0 +1,28 @@
+name: Stockbit Trending ➜ Telegram
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 9 * * 1-5"   # 09:00 UTC Mon-Fri, adjust to your TZ
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium --with-deps
+
+      - name: Run scraper
+        env:
+          STOCKBIT_EMAIL:      ${{ secrets.STOCKBIT_EMAIL }}
+          STOCKBIT_PASSWORD:   ${{ secrets.STOCKBIT_PASSWORD }}
+          TELEGRAM_BOT_TOKEN:  ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:    ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python scrap_stockbit_trending.py
