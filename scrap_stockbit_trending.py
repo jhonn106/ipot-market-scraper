@@ -1,32 +1,21 @@
-import os
-import requests
+from playwright.sync_api import sync_playwright
+import os, requests
 
-URL = "https://www.stockbit.com/api/v1/trending/stocks"
+def scrape_trending():
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
+        page = browser.new_page()
+        page.goto("https://stockbit.com/stream", timeout=30000)
 
-def scrape_stockbit_trending():
-    headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json"
-    }
-    try:
-        r = requests.get(URL, headers=headers, timeout=15)
-        r.raise_for_status()
-        data = r.json()
-    except Exception as e:
-        return f"❌ Gagal fetch trending: {e}"
+        # Wait for the trending table
+        rows = page.locator("table tbody tr").all_inner_texts()
+        if not rows:
+            return "⚠️ No trending data found."
 
-    stocks = data.get("data", {}).get("stocks", [])
-    if not stocks:
-        return "⚠️ Tidak ada saham trending."
-
-    msg = "🔥 *Stockbit Trending Stocks*\n"
-    for s in stocks[:10]:
-        ticker = s.get("symbol", "")
-        last   = s.get("last", "")
-        change = s.get("chg", "")
-        pct    = s.get("chg_pct", "")
-        msg += f"• `{ticker}` {last} ({change:+} {pct:+}%)\n"
-    return msg.strip()
+        msg = "🔥 *Stockbit Trending*\n"
+        for r in rows[:10]:
+            msg += f"• `{r.strip()}`\n"
+        return msg.strip()
 
 def send_telegram(text):
     token = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -36,6 +25,5 @@ def send_telegram(text):
     print("✅ Sent" if r.ok else f"❌ {r.text}")
 
 if __name__ == "__main__":
-    text = scrape_stockbit_trending()
-    print("DEBUG:", text)
-    send_telegram(text)
+    trending = scrape_trending()
+    send_telegram(trending)
