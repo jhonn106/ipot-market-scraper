@@ -1,40 +1,31 @@
 import os
 import requests
-from playwright.sync_api import sync_playwright, TimeoutError
 
-# ------------- helpers -------------
-def login_stockbit(page):
-    """Login via email/password to Stockbit."""
-    login_url = "https://stockbit.com/login"
-    page.goto(login_url, timeout=30000)
+URL = "https://www.stockbit.com/api/v1/trending/stocks"
 
-    # wait and fill form
-    page.fill('input[name="username"]', os.getenv("STOCKBIT_EMAIL"))
-    page.fill('input[name="password"]', os.getenv("STOCKBIT_PASSWORD"))
-    page.click('button[type="submit"]')
-
-    # verify we are logged-in (wait for dashboard/stream)
+def scrape_stockbit_trending():
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json"
+    }
     try:
-        page.wait_for_url("**/stream", timeout=30000)
-    except TimeoutError:
-        raise RuntimeError("❌ Login failed – check credentials or 2FA.")
+        r = requests.get(URL, headers=headers, timeout=15)
+        r.raise_for_status()
+        data = r.json()
+    except Exception as e:
+        return f"❌ Gagal fetch trending: {e}"
 
-def grab_trending(page):
-    """Return Markdown-formatted list of trending stocks."""
-    page.goto("https://stockbit.com/stream", timeout=30000)
-
-    # wait until the trending table is rendered
-    loc = page.locator("table tbody tr")
-    loc.first.wait_for(state="visible", timeout=15000)
-
-    rows = loc.all_inner_texts()
-    lines = [r.strip() for r in rows if r.strip()]
-    if not lines:
-        return "⚠️ No trending data found."
+    stocks = data.get("data", {}).get("stocks", [])
+    if not stocks:
+        return "⚠️ Tidak ada saham trending."
 
     msg = "🔥 *Stockbit Trending Stocks*\n"
-    for line in lines[:10]:            # max 10 rows
-        msg += f"• `{line}`\n"
+    for s in stocks[:10]:
+        ticker = s.get("symbol", "")
+        last   = s.get("last", "")
+        change = s.get("chg", "")
+        pct    = s.get("chg_pct", "")
+        msg += f"• `{ticker}` {last} ({change:+} {pct:+}%)\n"
     return msg.strip()
 
 def send_telegram(text):
@@ -44,15 +35,7 @@ def send_telegram(text):
     r = requests.post(url, json={"chat_id": chat, "text": text, "parse_mode": "Markdown"})
     print("✅ Sent" if r.ok else f"❌ {r.text}")
 
-# ------------- main -------------
 if __name__ == "__main__":
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
-        page = browser.new_page()
-
-        login_stockbit(page)
-        trending = grab_trending(page)
-        print("DEBUG:", trending)
-        send_telegram(trending)
-
-        browser.close()
+    text = scrape_stockbit_trending()
+    print("DEBUG:", text)
+    send_telegram(text)
