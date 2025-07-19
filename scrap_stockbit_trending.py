@@ -1,74 +1,67 @@
-from playwright.sync_api import sync_playwright
-import os
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
+import time
 import requests
-from dotenv import load_dotenv
 
-load_dotenv()
+# --- Konfigurasi Akun dan Telegram ---
+STOCKBIT_EMAIL = 'jhonni.cool@gmail.com'
+STOCKBIT_PASSWORD = 'jh0nn10614'
+TELEGRAM_BOT_TOKEN = '7249080183:AAEkMHdJ-fL0mI_LRqXT6UtJ2-DS5QI4j8M'
+TELEGRAM_CHAT_ID = '178798282'
 
-STOCKBIT_USERNAME = os.getenv("STOCKBIT_USERNAME")
-STOCKBIT_PASSWORD = os.getenv("STOCKBIT_PASSWORD")
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+# --- Setup Selenium (headless browser) ---
+chrome_options = Options()
+chrome_options.add_argument('--headless')
+chrome_options.add_argument('--disable-gpu')
+chrome_options.add_argument('--no-sandbox')
+driver = webdriver.Chrome(options=chrome_options)
 
-def scrape_trending_stockbit():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
-        page = context.new_page()
+try:
+    # 1. Login ke Stockbit
+    driver.get('https://stockbit.com/login')
+    time.sleep(3)
 
-        print("🔐 Login ke Stockbit...")
-        page.goto("https://stockbit.com/login", timeout=60000)
+    # Isi email
+    email_input = driver.find_element(By.NAME, 'username')
+    email_input.send_keys(STOCKBIT_EMAIL)
+    time.sleep(1)
 
-        page.fill("input[name='username']", STOCKBIT_USERNAME)
-        page.fill("input[name='password']", STOCKBIT_PASSWORD)
-        page.click("button[type='submit']")
+    # Isi password
+    password_input = driver.find_element(By.NAME, 'password')
+    password_input.send_keys(STOCKBIT_PASSWORD)
+    time.sleep(1)
 
-        # Tunggu redirect ke halaman stream
+    # Klik login
+    password_input.send_keys(Keys.RETURN)
+    time.sleep(5)  # Tunggu proses login
+
+    # 2. Akses halaman trending stock
+    driver.get('https://stockbit.com/stream')
+    time.sleep(5)  # Tunggu data termuat
+
+    # 3. Scrape trending stock
+    trending_stocks = []
+    stocks_elem = driver.find_elements(By.CSS_SELECTOR, 'div[data-testid="TrendingStockItem"]')
+    for elem in stocks_elem:
         try:
-            page.wait_for_url("**/stream", timeout=15000)
-        except:
-            page.goto("https://stockbit.com/stream")
+            symbol = elem.find_element(By.CSS_SELECTOR, '.sc-1vyl0yv-5 span').text
+            name = elem.find_element(By.CSS_SELECTOR, '.sc-1vyl0yv-7').text
+            trending_stocks.append(f"{symbol} - {name}")
+        except Exception:
+            continue
 
-        print("📥 Mengambil data trending...")
-        page.wait_for_selector("div[class*=Trending]", timeout=20000)
+    # 4. Kirim ke Telegram
+    if trending_stocks:
+        message = "Trending Stock di Stockbit\n\n" + "\n".join(trending_stocks)
+    else:
+        message = "Gagal mengambil data trending stock."
 
-        # Temukan elemen Trending
-        trending_section = page.locator("div:has-text('Trending')").nth(0).locator("xpath=..")
-        trending_items = trending_section.locator("a[class*=stock-link]").all_inner_texts()
+    requests.post(
+        f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage',
+        data={'chat_id': TELEGRAM_CHAT_ID, 'text': message}
+    )
 
-        browser.close()
-
-        if not trending_items:
-            return "⚠️ Tidak ada data trending ditemukan"
-
-        result = "**🔥 Trending Stock (Stockbit)**\n"
-        for i, item in enumerate(trending_items[:10], 1):  # maksimal 10
-            result += f"{i}. {item.strip()}\n"
-
-        return result.strip()
-
-def send_to_telegram(message):
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        print("❌ Telegram token atau chat_id belum diset.")
-        return
-
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": message
-    }
-
-    try:
-        res = requests.post(url, json=payload)
-        if res.status_code == 200:
-            print("✅ Data trending dikirim ke Telegram.")
-        else:
-            print(f"❌ Gagal kirim ke Telegram: {res.text}")
-    except Exception as e:
-        print(f"❌ Error Telegram: {e}")
-
-if __name__ == "__main__":
-    trending = scrape_trending_stockbit()
-    print(trending)
-    if "Trending Stock" in trending:
-        send_to_telegram(trending)
+finally:
+    driver.quit()
